@@ -7,10 +7,18 @@ library(tidyverse)
 library(funModel)
 library(lubridate)
 
+#################
+## Import Data ##
+#################
+
 # start by importing the csv files into data frames
 station <- read.csv("raw_data/station.csv")
 trip <- read.csv("raw_data/trip.csv")
 weather <- read.csv("raw_data/weather.csv")
+
+#########
+## EDA ##
+#########
 
 # get an idea of what information is contained in the station dataframe
 head(station)
