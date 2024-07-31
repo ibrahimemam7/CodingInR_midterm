@@ -4,7 +4,7 @@
 
 #import relevant libraries
 library(tidyverse)
-library(funModel)
+library(funModeling)
 library(lubridate)
 
 #################
@@ -61,13 +61,37 @@ plot_num(weather)
 
 # station data looks clean already
 
-# CLEANING TRIP DATA FRAME
+# CLEANING TRIP DATA FRAME (using copy of data, not original)
 
-# remove outliers for trip duration
+# format trip duration as minutes instead of seconds
+clean_trip <- trip
+clean_trip$duration <- clean_trip$duration / 60
 
-# indicate missing values with NA
+#remove outliers (any trip over 12 hours is considered unrealistic)
 
-# format times as POSIX
+# keep the id of these long trips to document the outliers that were removed
+long_outliers <- clean_trip$id[clean_trip$duration > 12*60]
+
+# exclude the long outliers from the data frame
+clean_trip <- clean_trip %>% 
+  filter(!duration > 12*60)
 
 #' remove very short trips that began and started at the same station
-#' (these trips were likely cancelled)
+#' (these trips were likely cancelled).
+
+# keep a note of the IDs that are considered cancelled trips 
+cancelled_trips <- clean_trip$id[clean_trip$start_station_id == clean_trip$end_station_id
+                                 & clean_trip$duration < 3]
+# exclude cancelled trips from the data frame 
+clean_trip <- clean_trip %>% 
+  filter(!(start_station_id == end_station_id & duration < 3))
+
+#' # format times as POSIX
+clean_trip$start_date <- mdy_hm(clean_trip$start_date)
+clean_trip$end_date <- mdy_hm(clean_trip$end_date)
+
+# zip code has missing values, but zip code likely will not be used later
+
+# CLEANING WEATHER DATA FRAME (using copy of data, not original)
+
+weather_clean <- weather
