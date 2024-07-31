@@ -59,12 +59,22 @@ plot_num(weather)
 ## Cleaning ##
 ##############
 
-# station data looks clean already
+# CLEANING STATION DATA
+
+# check for duplicates, there are none
+any(duplicated(station))
+
+# station data looks clean already. Make a copy to leave the original data as is
+clean_station <- station
 
 # CLEANING TRIP DATA FRAME (using copy of data, not original)
 
-# format trip duration as minutes instead of seconds
 clean_trip <- trip
+
+# check for duplicate rows in the data, there are none
+any(duplicated(clean_trip))
+
+# format trip duration as minutes instead of seconds
 clean_trip$duration <- clean_trip$duration / 60
 
 #remove outliers (any trip over 12 hours is considered unrealistic)
@@ -94,4 +104,10 @@ clean_trip$end_date <- mdy_hm(clean_trip$end_date)
 
 # CLEANING WEATHER DATA FRAME (using copy of data, not original)
 
-weather_clean <- weather
+clean_weather <- weather
+
+# check for duplicates, there are none
+any(duplicated(clean_weather))
+
+# no noticeable outliers or missing values
+
