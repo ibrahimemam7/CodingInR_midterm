@@ -64,8 +64,11 @@ plot_num(weather)
 # check for duplicates, there are none
 any(duplicated(station))
 
-# station data looks clean already. Make a copy to leave the original data as is
+# make a copy to leave the original data as is
 clean_station <- station
+
+# format installation date as posix
+clean_station$installation_date <- mdy(clean_station$installation_date, tz = "UTC")
 
 # CLEANING TRIP DATA FRAME (using copy of data, not original)
 
@@ -217,3 +220,18 @@ weekend %>%
   summarise(frequency = n()) %>% 
   # see the 10 stations with the highest frequency of trips started
   arrange(desc(frequency))
+
+###############################
+## Bike Utilization Analysis ##
+###############################
+
+dates <- seq(from = as.POSIXct("2014-01-01", tz = "UTC"), to = as.POSIXct("2014-12-31", tz = "UTC"), by = "day")
+
+for(x in dates) {
+  available_stations <- clean_station[clean_station$installation_date <= x,]
+  print(length(available_stations))
+}
+
+clean_trip %>% 
+  group_by(month(start_date)) %>% 
+  summarize(utilization = )
