@@ -158,3 +158,62 @@ ggplot(weekday, aes(x = trip_mp)) +
 
 #' histogram indicates rush hour is from 7:30am-10:30am and 16:00 to 20:00, as
 #' these times have above average tip volume.
+
+############################
+## Busy Stations Analysis ##
+############################
+
+#' create new column "start_time" with the same date for all rows. Need to do this
+#' because POSIX format always has an associated date, but we do not want to compare
+#' dates when figuring out if a trip started/ended during rush hours (we only want
+#' to filter based on time)
+weekday$start_time <- update(weekday$start_date, year = 1970, month = 1, day = 1)
+
+# create new column "end_time" with the same date for all rows (reason same as above)
+weekday$end_time <- update(weekday$end_date, year = 1970, month = 1, day = 1)
+
+# specify which hours are rush hours
+am_rush_start <- as.POSIXct("1970-01-01 07:30:00")
+am_rush_end <- as.POSIXct("1970-01-01 10:30:00")
+pm_rush_start <- as.POSIXct("1970-01-01 16:00:00")
+pm_rush_end <- as.POSIXct("1970-01-01 20:00:00")
+
+# determine the 10 most frequent starting stations during weekday rush hours
+weekday %>% 
+   # find trips that start during the morning rush or the afternoon rush
+  filter((start_time > am_rush_start & start_time < am_rush_end) | (start_time > pm_rush_start & start_time < pm_rush_end)) %>% 
+  # group by station
+  group_by(start_station_name) %>% 
+  # get the frequency of trips started for each station
+  summarise(frequency = n()) %>% 
+  # see the 10 stations with the highest frequency of trips started during rush hours
+  arrange(desc(frequency))
+
+# determine the 10 most frequent ending stations during weekday rush hours
+weekday %>% 
+  # find trips that end during the morning rush or the afternoon rush
+  filter((end_time > am_rush_start & end_time < am_rush_end) | (end_time > pm_rush_start & end_time < pm_rush_end)) %>% 
+  # group by station
+  group_by(start_station_name) %>% 
+  # get the frequency of trips started for each station
+  summarise(frequency = n()) %>% 
+  # see the 10 stations with the highest frequency of trips ended during rush hours
+  arrange(desc(frequency))
+
+# determine the 10 most frequent starting stations during the weekend
+weekend %>% 
+  # group by station
+  group_by(start_station_name) %>% 
+  # get the frequency of trips started for each station
+  summarise(frequency = n()) %>% 
+  # see the 10 stations with the highest frequency of trips started
+  arrange(desc(frequency))
+
+# determine the 10 most frequent ending stations during the weekend
+weekend %>% 
+  # group by station
+  group_by(end_station_name) %>% 
+  # get the frequency of trips started for each station
+  summarise(frequency = n()) %>% 
+  # see the 10 stations with the highest frequency of trips started
+  arrange(desc(frequency))
