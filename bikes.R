@@ -120,16 +120,41 @@ any(duplicated(clean_weather))
 clean_trip$trip_mp <- as.POSIXct((as.numeric(clean_trip$end_date) + as.numeric(clean_trip$start_date)) / 2,
                                  tz = "UTC")
 
-#' reformat the column to have the same month, day, and year for all trip midpoints.
-#' This is important because we do not want the x-axis to have bins for every
-#' day of the year (only concerned with 24hr period)
-clean_trip$trip_mp <- update(clean_trip$trip_mp, year = 1970, month = 1, day = 1)
+# create function to easily identify weekdays/weekends
+is_weekday <- function(date) {
+  day_of_week <- weekdays(date)
+  return(day_of_week %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))
+}
 
-# Plot histogram with ggplot2
-ggplot(clean_trip, aes(x = trip_mp)) +
-  geom_histogram(binwidth = 1800) +
+# create a subset of the data with only weekdays
+weekday <- clean_trip %>% 
+  filter(is_weekday(trip_mp))
+
+# create a subset of the data with only weekends
+weekend <- clean_trip %>% 
+  filter(!is_weekday(trip_mp))
+
+#' reformat the midpoint column to have the same month, day, and year for all
+#' trip midpoints. This is important because we do not want the x-axis to have
+#' bins for every day of the year (only concerned with 24hr period)
+weekday$trip_mp <- update(weekday$trip_mp, year = 1970, month = 1, day = 1)
+weekend$trip_mp <- update(weekend$trip_mp, year = 1970, month = 1, day = 1)
+
+#' determine the average number of trips in any given half hour increment (will
+#' use this same increment for the histogram in the next step). The average
+#' will be a helpful reference value to decide what is considered 'rush hours'
+avg_weekday_freq <- nrow(weekday[!is.na(weekday$trip_mp),]) / 48
+
+# plot weekday histogram with ggplot2
+ggplot(weekday, aes(x = trip_mp)) +
+  geom_histogram(binwidth = 1800, fill = "blue", color = "black") +
   scale_x_datetime(date_labels = "%H:%M", date_breaks = "1 hour") +
-  labs(title = "Histogram of Trip Volume Throughout the Day",
+  labs(title = "Weekday Trip Volume",
        x = "Time",
        y = "Frequency") +
-  theme_classic()
+  geom_hline(yintercept = avg_weekday_freq, color = "red", linetype = "dashed") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#' histogram indicates rush hour is from 7:30am-10:30am and 16:00 to 20:00, as
+#' these times have above average tip volume.
