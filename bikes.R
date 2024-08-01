@@ -97,8 +97,8 @@ clean_trip <- clean_trip %>%
   filter(!(start_station_id == end_station_id & duration < 3))
 
 #' # format times as POSIX
-clean_trip$start_date <- mdy_hm(clean_trip$start_date)
-clean_trip$end_date <- mdy_hm(clean_trip$end_date)
+clean_trip$start_date <- mdy_hm(clean_trip$start_date, tz = "UTC")
+clean_trip$end_date <- mdy_hm(clean_trip$end_date, tz = "UTC")
 
 # zip code has missing values, but zip code likely will not be used later
 
@@ -111,3 +111,25 @@ any(duplicated(clean_weather))
 
 # no noticeable outliers or missing values
 
+########################
+## Rush Hour Analysis ##
+########################
+
+#' using the start or end time will bias the rush hours towards earlier or later
+#' hours respectively, so a new column will be created for the midpoint
+clean_trip$trip_mp <- as.POSIXct((as.numeric(clean_trip$end_date) + as.numeric(clean_trip$start_date)) / 2,
+                                 tz = "UTC")
+
+#' reformat the column to have the same month, day, and year for all trip midpoints.
+#' This is important because we do not want the x-axis to have bins for every
+#' day of the year (only concerned with 24hr period)
+clean_trip$trip_mp <- update(clean_trip$trip_mp, year = 1970, month = 1, day = 1)
+
+# Plot histogram with ggplot2
+ggplot(clean_trip, aes(x = trip_mp)) +
+  geom_histogram(binwidth = 1800) +
+  scale_x_datetime(date_labels = "%H:%M", date_breaks = "1 hour") +
+  labs(title = "Histogram of Trip Volume Throughout the Day",
+       x = "Time",
+       y = "Frequency") +
+  theme_classic()
