@@ -112,6 +112,24 @@ clean_weather <- weather
 # check for duplicates, there are none
 any(duplicated(clean_weather))
 
+# format date column as POSIX
+clean_weather$date <- mdy(clean_weather$date)
+
+#' code book defines "T" as trace amount of precipitation (<.01 inch). This value
+#' will be imputed as 0.005 inch to keep the column entirely numeric
+clean_weather <- clean_weather %>%
+  mutate(precipitation_inches = 
+           if_else(precipitation_inches == "T", 0.005, as.numeric(precipitation_inches)))
+
+#' replace blank values in "events" column with "None" for clarity in later analysis.
+#' also, rain is spelled with both uppercase and lowecase, so those should be combined
+clean_weather <- clean_weather %>%
+  mutate(events = if_else(events == "", "None", events)) %>% 
+  mutate(events = if_else(events == "rain", "Rain", events))
+
+# format weather events as factor for later analysis
+clean_weather$events <- as.factor(clean_weather$events)
+
 # no noticeable outliers or missing values
 
 ########################
@@ -282,3 +300,17 @@ ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
        x = "Month",
        y = "Utilization (% per bike)") +
   theme_classic()
+
+######################
+## Weather Analysis ##
+######################
+
+#' create a new column in the clean_trip data frame corresponding to the midpoint
+#' date (but not time). date will be one of the variables used in the join later,
+#' so this new date column will match the date column in the weather data frame
+clean_trip$mp_date <- as.POSIXct(as.Date(clean_trip$trip_mp))
+
+trips_with_weather <- clean_trip %>% 
+  left_join(clean_station[, c("id", "city")], by = c("start_station_id" = "id")) %>%  
+  left_join(clean_weather, by = c("mp_date" = "date", "city" = "city"))
+  
