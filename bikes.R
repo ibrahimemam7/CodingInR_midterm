@@ -6,6 +6,7 @@
 library(tidyverse)
 library(funModeling)
 library(lubridate)
+library(corrplot)
 
 #################
 ## Import Data ##
@@ -310,7 +311,32 @@ ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
 #' so this new date column will match the date column in the weather data frame
 clean_trip$mp_date <- as.POSIXct(as.Date(clean_trip$trip_mp))
 
+# USELESS ANALYSIS PLZ REMOVE
 trips_with_weather <- clean_trip %>% 
   left_join(clean_station[, c("id", "city")], by = c("start_station_id" = "id")) %>%  
   left_join(clean_weather, by = c("mp_date" = "date", "city" = "city"))
-  
+
+# USELESS ANALYSIS PLZ REMOVE
+tww_numeric <- trips_with_weather[sapply(trips_with_weather, is.numeric)]
+tww_numeric <- tww_numeric %>% select(-id, -zip_code.y, -start_station_id, -end_station_id)
+cor_matrix <- cor(tww_numeric)
+corrplot(cor_matrix, method = "circle")
+
+tmp <- clean_trip %>% 
+  left_join(clean_station[, c("id", "city")], by = c("start_station_id" = "id")) %>%
+  group_by(city, mp_date) %>% 
+  summarise(avg_duration = mean(duration), n_trips = n()) %>%
+  left_join(clean_weather, by = c("mp_date" = "date", "city" = "city"))
+
+d <- tmp[sapply(tmp, is.numeric)]
+d <- d %>% select(-zip_code)
+d <- na.omit(d)
+cor_matrix <- cor(d)
+corrplot(cor_matrix, method = "circle")
+
+myModel <- lm(avg_duration ~ ., data = tmp)
+summary(myModel)
+
+myModel2 <- lm(n_trips ~ ., data = tmp)
+summary(myModel2)
+plot(n_trips ~ precipitation_inches, data = tmp)
