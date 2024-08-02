@@ -7,6 +7,7 @@ library(tidyverse)
 library(funModeling)
 library(lubridate)
 library(corrplot)
+library(ggmap)
 
 #################
 ## Import Data ##
@@ -132,6 +133,56 @@ clean_weather <- clean_weather %>%
 clean_weather$events <- as.factor(clean_weather$events)
 
 # no noticeable outliers or missing values
+
+#########################################
+## Summary Figures After Data Cleaning ##
+#########################################
+
+# CREATE SUMMARY FIGURES FOR STATION DATA
+
+# station figure - 1: create a map of the stations across the bay area
+
+# register API key for geocoding service
+register_stadiamaps(key = "1e027bd6-f7fb-4b05-9f2c-ce48d3386297")
+
+# use API to get map of bay area
+sf_bay_area_map <- get_stadiamap(bbox = c(left = -122.7, bottom = 37, right = -121.5, top = 38), 
+                                 zoom = 10, maptype = "alidade_smooth")
+
+# use ggmaps package to plot the lat and long of the stations on the map
+ggmap(sf_bay_area_map) +
+  geom_jitter(data = clean_station, aes(x = long, y = lat), 
+              width = 0.15, height = 0.15, color = "blue", size = 1.1) +
+  theme_classic() +
+  theme(axis.line = element_blank(), 
+        axis.text = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.title = element_blank())
+
+# station figure - 2: show number of stations by city
+ggplot(clean_station, aes(x = city)) +
+  geom_bar(fill = "blue", col = "black") +
+  labs(title = "Number of Stations by City",
+       x = "City",
+       y = "Number of Stations") +
+  theme_classic()
+
+# CREATE SUMMARY FIGURES FOR WEATHER DATA
+
+# weather figure 1: Show the number of each weather event for each city
+
+# get the number of weather events for each city
+weather_events_summary <- clean_weather %>%
+  group_by(events, city) %>%
+  summarise(count = n(), .groups = 'drop')
+
+ggplot(weather_events_summary, aes(x = events, y = count, fill = city)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Weather Events by City",
+       x = "Weather Event",
+       y = "Count") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ########################
 ## Rush Hour Analysis ##
@@ -321,7 +372,6 @@ weather_and_trips <- clean_trip %>%
   left_join(clean_weather, by = c("mp_date" = "date", "city" = "city"))
 
 # create a correlation plot for each city
-
 for(x in unique(weather_and_trips$city)){
   
   # only include one city per plot, also remove zip code since it is numeric but
@@ -340,7 +390,7 @@ for(x in unique(weather_and_trips$city)){
   cor_matrix <- cor_matrix[c("n_trips", "avg_duration"), !colnames(cor_matrix) %in% c("n_trips", "avg_duration")]
   
   # create the correlation plot
-  corrplot(cor_matrix, method = "circle",
+  plot <- corrplot(cor_matrix, method = "circle",
            title = paste("Correlations Between Trips and Weather", " - ", x),
            mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black")
 }

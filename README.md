@@ -39,3 +39,5 @@ data codebook: https://www.kaggle.com/datasets/benhamner/sf-bay-area-bike-share/
   - join station data to trips data (this tells us the starting city of each trip)
   - join weather data to the data frame above based on city and date
   - determine correlation of weather with number of trips
+
+7. Create improved figures to summarize the three data sets (post-cleaning)
