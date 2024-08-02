@@ -6,6 +6,7 @@
 library(tidyverse)
 library(funModeling)
 library(lubridate)
+library(corrplot)
 
 #################
 ## Import Data ##
@@ -111,6 +112,24 @@ clean_weather <- weather
 
 # check for duplicates, there are none
 any(duplicated(clean_weather))
+
+# format date column as POSIX
+clean_weather$date <- mdy(clean_weather$date)
+
+#' code book defines "T" as trace amount of precipitation (<.01 inch). This value
+#' will be imputed as 0.005 inch to keep the column entirely numeric
+clean_weather <- clean_weather %>%
+  mutate(precipitation_inches = 
+           if_else(precipitation_inches == "T", 0.005, as.numeric(precipitation_inches)))
+
+#' replace blank values in "events" column with "None" for clarity in later analysis.
+#' also, rain is spelled with both uppercase and lowecase, so those should be combined
+clean_weather <- clean_weather %>%
+  mutate(events = if_else(events == "", "None", events)) %>% 
+  mutate(events = if_else(events == "rain", "Rain", events))
+
+# format weather events as factor for later analysis
+clean_weather$events <- as.factor(clean_weather$events)
 
 # no noticeable outliers or missing values
 
@@ -282,3 +301,46 @@ ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
        x = "Month",
        y = "Utilization (% per bike)") +
   theme_classic()
+
+######################
+## Weather Analysis ##
+######################
+
+#' create a new column in the clean_trip data frame corresponding to the midpoint
+#' date (but not time). date will be one of the variables used in the join later,
+#' so this new date column will match the date column in the weather data frame
+clean_trip$mp_date <- as.POSIXct(as.Date(clean_trip$trip_mp))
+
+#' create a data frame that has one row for each city and day, with the associated
+#' weather data for that day and city, plus the number of bike trips and the
+#' average duration of those bike trips for each city on each day
+weather_and_trips <- clean_trip %>% 
+  left_join(clean_station[, c("id", "city")], by = c("start_station_id" = "id")) %>%
+  group_by(city, mp_date) %>% 
+  summarise(avg_duration = mean(duration), n_trips = n()) %>%
+  left_join(clean_weather, by = c("mp_date" = "date", "city" = "city"))
+
+# create a correlation plot for each city
+
+for(x in unique(weather_and_trips$city)){
+  
+  # only include one city per plot, also remove zip code since it is numeric but
+  # not relevant for the analysis
+  tmp <- weather_and_trips %>%
+    select(-zip_code) %>% 
+    filter(city == x)
+  
+  # remove non-numeric columns since they cannot be analyzed via cor() function
+  tmp <- tmp[sapply(tmp, is.numeric)]
+  
+  # create the correlation matrix
+  cor_matrix <- cor(tmp, use = "pairwise.complete.obs")
+  
+  # select only relevant columns in the matrix
+  cor_matrix <- cor_matrix[c("n_trips", "avg_duration"), !colnames(cor_matrix) %in% c("n_trips", "avg_duration")]
+  
+  # create the correlation plot
+  corrplot(cor_matrix, method = "circle",
+           title = paste("Correlations Between Trips and Weather", " - ", x),
+           mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black")
+}
