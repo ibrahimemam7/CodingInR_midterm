@@ -400,11 +400,15 @@ monthly_util <- clean_trip %>%
 ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
   geom_line(group = 1, color = "blue") +
   geom_point(color = "black") +
+  scale_y_continuous(limits = c(0, 1.5)) +
+  geom_label(aes(label = round(utilization, 2)),
+             fill = "transparent", vjust = -1.5, size = 2.5, label.size = 0) +
   scale_x_discrete(labels = month.abb) +
   labs(title = "Monthly Bike Utilization",
        x = "Month",
        y = "Utilization (% per bike)") +
-  theme_classic()
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ######################
 ## Weather Analysis ##
@@ -428,7 +432,7 @@ weather_and_trips <- clean_trip %>%
 for(x in unique(weather_and_trips$city)){
   
   # only include one city per plot, also remove zip code since it is numeric but
-  # not relevant for the analysis
+  # not relevant for the analysis. (tmp = temporary data frame)
   tmp <- weather_and_trips %>%
     select(-zip_code) %>% 
     filter(city == x)
@@ -443,7 +447,8 @@ for(x in unique(weather_and_trips$city)){
   cor_matrix <- cor_matrix[c("n_trips", "avg_duration"), !colnames(cor_matrix) %in% c("n_trips", "avg_duration")]
   
   # create the correlation plot
-  plot <- corrplot(cor_matrix, method = "circle",
+  corrplot(cor_matrix, method = "circle",
            title = paste("Correlations Between Trips and Weather", " - ", x),
-           mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black")
+           mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black",
+           cex.main = 1, tl.srt = 45)
 }
