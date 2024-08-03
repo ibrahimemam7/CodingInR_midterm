@@ -146,13 +146,13 @@ clean_weather$events <- as.factor(clean_weather$events)
 register_stadiamaps(key = "1e027bd6-f7fb-4b05-9f2c-ce48d3386297")
 
 # use API to get map of bay area
-sf_bay_area_map <- get_stadiamap(bbox = c(left = -122.7, bottom = 37, right = -121.5, top = 38), 
+sf_bay_area_map <- get_stadiamap(bbox = c(left = -122.55, bottom = 37.25, right = -121.7, top = 37.87), 
                                  zoom = 10, maptype = "alidade_smooth")
 
 # use ggmaps package to plot the lat and long of the stations on the map
 ggmap(sf_bay_area_map) +
   geom_jitter(data = clean_station, aes(x = long, y = lat), 
-              width = 0.15, height = 0.15, color = "blue", size = 1.1) +
+              width = 0.009, height = 0.009, color = "blue", size = 0.8) +
   theme_classic() +
   theme(axis.line = element_blank(), 
         axis.text = element_blank(), 
@@ -176,13 +176,34 @@ weather_events_summary <- clean_weather %>%
   group_by(events, city) %>%
   summarise(count = n(), .groups = 'drop')
 
+# create a bar plot with one colour corresponding to each city
 ggplot(weather_events_summary, aes(x = events, y = count, fill = city)) +
   geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_ordinal("city") +
   labs(title = "Weather Events by City",
        x = "Weather Event",
        y = "Count") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# weather figure 2: Show the avg, min, and max throughout the year for each city
+
+# create a line graph with blue, black, and red corresponding to min, avg, and max temp
+ggplot(clean_weather, aes(x = date)) +
+  facet_wrap(~city, scales = "free", ncol = 2) +
+  geom_smooth(aes(y = min_temperature_f, color = "Min Temp")) +
+  geom_smooth(aes(y = mean_temperature_f, color = "Mean Temp")) +
+  geom_smooth(aes(y = max_temperature_f, color = "Max Temp")) +
+  labs(title = "Daily Temperatures by City (°F)", color = "Temperature Type",
+       x = NULL, y = NULL) +
+  scale_color_manual(values = c("Min Temp" = "blue", "Mean Temp" = "black", "Max Temp" = "darkred")) +
+  theme_classic() +
+  theme(legend.position =  c(0.8, 0.13),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'),
+        legend.key = element_rect(fill = "transparent"),
+        plot.title = element_text(hjust = 0.5),
+        panel.spacing = unit(1, "lines"))
+
 
 ########################
 ## Rush Hour Analysis ##
