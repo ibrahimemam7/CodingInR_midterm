@@ -142,7 +142,7 @@ clean_weather$events <- as.factor(clean_weather$events)
 
 # station figure - 1: create a map of the stations across the bay area
 
-# register API key for geocoding service
+# register API key for geo-coding service
 register_stadiamaps(key = "1e027bd6-f7fb-4b05-9f2c-ce48d3386297")
 
 # use API to get map of bay area
@@ -161,11 +161,12 @@ ggmap(sf_bay_area_map) +
 
 # station figure - 2: show number of stations by city
 ggplot(clean_station, aes(x = city)) +
-  geom_bar(fill = "blue", col = "black") +
+  geom_bar() +
   labs(title = "Number of Stations by City",
        x = "City",
        y = "Number of Stations") +
-  theme_classic()
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 # CREATE SUMMARY FIGURES FOR WEATHER DATA
 
@@ -178,13 +179,16 @@ weather_events_summary <- clean_weather %>%
 
 # create a bar plot with one colour corresponding to each city
 ggplot(weather_events_summary, aes(x = events, y = count, fill = city)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", col = "black") +
   scale_fill_ordinal("city") +
   labs(title = "Weather Events by City",
        x = "Weather Event",
        y = "Count") +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5),
+        legend.position =  c(0.85, 0.7),
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'))
 
 # weather figure 2: Show the avg, min, and max throughout the year for each city
 
@@ -202,8 +206,36 @@ ggplot(clean_weather, aes(x = date)) +
         legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'),
         legend.key = element_rect(fill = "transparent"),
         plot.title = element_text(hjust = 0.5),
-        panel.spacing = unit(1, "lines"))
+        panel.spacing = unit(1, "lines"),
+        strip.background = element_blank())
 
+# CREATE A SUMMARY FIGURE FOR TRIPS DATA
+
+#' goal: create a box plot showing average duration of trips, including a label
+#' on each box indicating the number of trips that occured in that city
+
+# make a data frame that has trips + the city each trip started in
+trips_with_city <- clean_trip %>% 
+  left_join(clean_station[, c("id", "city")], by = c("start_station_id" = "id"))
+
+# determine how many trips started in each city
+trip_counts <- trips_with_city %>%
+  group_by(city) %>%
+  summarise(count = n())
+
+#' create the box plot using log(duration). Log is needed because the range of
+#' duration data is too wide. Use geom_text to add label showing number of trips
+#' per city.
+ggplot(trips_with_city, aes(x = city, y = log(duration))) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0, 7)) +
+  geom_text(data = trip_counts, aes(x = city, y = Inf, label = paste("n =", count)),
+            vjust = 1.5) +
+  labs(title = "Duration of Trips by City",
+       x = "City",
+       y = "Duration (log(mins))") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ########################
 ## Rush Hour Analysis ##
