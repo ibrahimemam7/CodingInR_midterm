@@ -280,7 +280,8 @@ ggplot(weekday, aes(x = trip_mp)) +
        y = "Frequency") +
   geom_hline(yintercept = avg_weekday_freq, color = "red", linetype = "dashed") +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
 
 #' histogram indicates rush hour is from 7:30am-10:30am and 16:00 to 20:00, as
 #' these times have above average tip volume.
