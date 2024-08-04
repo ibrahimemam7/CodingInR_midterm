@@ -373,57 +373,25 @@ weekend %>%
 
 #' depending on the date in question, a different number of total bikes will have
 #' been available because additional bike stations were installed in the first
-#' few months of the year. GOAL: get the average number of bikes available for
-#' use in each month.
+#' few months of the year. Also, some bikes may be broken or undergoing repair.
 
-# first, find the number of bikes available for use on each day of the year
+# determine the number of bikes available in each month
+available_bikes <- clean_trip %>%
+  mutate(trip_month = month(trip_mp)) %>%
+  group_by(trip_month) %>%
+  summarise(n_bikes_available = length(unique(bike_id)))
 
-# create a vector containing the date of every day in the year 2014
-dates <- seq(from = as.POSIXct("2014-01-01", tz = "UTC"), to = as.POSIXct("2014-12-31", tz = "UTC"), by = "day")
-
-#' create an empty vector which will be used to store how many bikes were available
-#' for each day
-available_bikes_daily <- c()
-
-# cycle through each day of the year
-for(i in 1:365) {
-  
-  # identify the stations that were installed prior to the date in question
-  available_stations <- clean_station[dates[i] >= clean_station$installation_date,]
-  
-  # get the total number of bikes that were available on that day
-  available_bikes_daily[i] <- sum(available_stations$dock_count)
-}
-
-#' combine the dates with the daily bike availability into a data frame
-#' so that data can be grouped easily in the next step
-available_bikes <- data.frame(dates, available_bikes_daily)
-
-#' determine the average number of bikes available for each month
-#' (sum of daily availability divided by number of days in the month)
-available_bikes <- available_bikes %>% 
-  group_by(month(dates)) %>% 
-  summarise(avg_availability = sum(available_bikes_daily)/n())
-
-# rename the columns of the data frame for clarity
-colnames(available_bikes) <- c("month", "avg_availability")
-
-#' we now have the information needed to accurately calculate utilization.
-#' Rather than calculate as (total time used/total time in month),
-#' the utilization will be calculated as:
-#' total time used / (total time in month * number of bikes available that month).
-#' This approach provides more insight into the utilization because several bikes
-#' can be used at the same time.
+# calculate the percent utilization for each month
 monthly_util <- clean_trip %>%
   mutate(trip_month = month(trip_mp)) %>%
   group_by(trip_month) %>% 
-  summarise(utilization = (100*sum(duration)) / (60*24*days_in_month(trip_month[1])*available_bikes$avg_availability[trip_month[1]]))
+  summarise(utilization = (100*sum(duration)) / (60*24*days_in_month(trip_month[1])*available_bikes$n_bikes_available[trip_month[1]]))
 
 # plot the % utilization for each month of the year
 ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
   geom_line(group = 1, color = "blue") +
   geom_point(color = "black") +
-  scale_y_continuous(limits = c(0, 1.5)) +
+  scale_y_continuous(limits = c(0, 2)) +
   geom_label(aes(label = round(utilization, 2)),
              fill = "transparent", vjust = -1.5, size = 2.5, label.size = 0) +
   scale_x_discrete(labels = month.abb) +
@@ -432,6 +400,9 @@ ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
        y = "Utilization (% per bike)") +
   theme_classic() +
   theme(plot.title = element_text(hjust = 0.5))
+
+# determine the average year-round utilization
+mean(monthly_util$utilization)
 
 ######################
 ## Weather Analysis ##
