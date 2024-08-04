@@ -210,6 +210,7 @@ ggplot(weather_events_summary, aes(x = events, y = count, fill = city)) +
 # create a line graph with blue, black, and red corresponding to min, avg, and max temp
 ggplot(clean_weather, aes(x = date)) +
   facet_wrap(~city, scales = "free", ncol = 2) +
+  scale_y_continuous(limits = c(0, 90)) +
   geom_smooth(aes(y = min_temperature_f, color = "Min Temp")) +
   geom_smooth(aes(y = mean_temperature_f, color = "Mean Temp")) +
   geom_smooth(aes(y = max_temperature_f, color = "Max Temp")) +
@@ -223,6 +224,9 @@ ggplot(clean_weather, aes(x = date)) +
         plot.title = element_text(hjust = 0.5),
         panel.spacing = unit(1, "lines"),
         strip.background = element_blank())
+
+# calculate the average temperature in the bay area
+mean(clean_weather$mean_temperature_f)
 
 # CREATE A SUMMARY FIGURE FOR TRIPS DATA
 
@@ -251,6 +255,9 @@ ggplot(trips_with_city, aes(x = city, y = log(duration))) +
        y = "Duration (log(mins))") +
   theme_classic() +
   theme(plot.title = element_text(hjust = 0.5))
+
+# determine the mean trip duration
+mean(clean_trip$duration, na.rm = T)
 
 ########################
 ## Rush Hour Analysis ##
@@ -464,7 +471,7 @@ for(x in unique(weather_and_trips$city)){
   
   # create the correlation plot
   corrplot(cor_matrix, method = "circle",
-           title = paste("Correlations Between Trips and Weather", " - ", x),
+           title = x,
            mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black",
-           cex.main = 1, tl.srt = 45)
+           cex.main = 1.2, tl.srt = 45)
 }
