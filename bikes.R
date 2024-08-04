@@ -101,7 +101,22 @@ cancelled_trips <- clean_trip$id[clean_trip$start_station_id == clean_trip$end_s
 clean_trip <- clean_trip %>% 
   filter(!(start_station_id == end_station_id & duration < 3))
 
-#' # format times as POSIX
+# GOAL: store removed trips in a data frame
+
+length(cancelled_trips)
+length(long_outliers)
+
+#' add NAs to shorter data vector because the two vectors must be equal length
+#' to be combined into a data frame
+long_outliers <- c(long_outliers, rep(NA, length(cancelled_trips) - length(long_outliers)))
+
+# combine the two vectors of IDs into a data frame
+removed_trips <- data.frame(cancelled_trips, long_outliers)
+
+# save the removed_trips data frame to a CSV
+write.csv(removed_trips, file = "removed_trips.csv", row.names = FALSE)
+
+#' format times as POSIX
 clean_trip$start_date <- mdy_hm(clean_trip$start_date, tz = "UTC")
 clean_trip$end_date <- mdy_hm(clean_trip$end_date, tz = "UTC")
 
