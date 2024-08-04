@@ -101,7 +101,22 @@ cancelled_trips <- clean_trip$id[clean_trip$start_station_id == clean_trip$end_s
 clean_trip <- clean_trip %>% 
   filter(!(start_station_id == end_station_id & duration < 3))
 
-#' # format times as POSIX
+# GOAL: store removed trips in a data frame
+
+length(cancelled_trips)
+length(long_outliers)
+
+#' add NAs to shorter data vector because the two vectors must be equal length
+#' to be combined into a data frame
+long_outliers <- c(long_outliers, rep(NA, length(cancelled_trips) - length(long_outliers)))
+
+# combine the two vectors of IDs into a data frame
+removed_trips <- data.frame(cancelled_trips, long_outliers)
+
+# save the removed_trips data frame to a CSV
+write.csv(removed_trips, file = "removed_trips.csv", row.names = FALSE)
+
+#' format times as POSIX
 clean_trip$start_date <- mdy_hm(clean_trip$start_date, tz = "UTC")
 clean_trip$end_date <- mdy_hm(clean_trip$end_date, tz = "UTC")
 
@@ -195,6 +210,7 @@ ggplot(weather_events_summary, aes(x = events, y = count, fill = city)) +
 # create a line graph with blue, black, and red corresponding to min, avg, and max temp
 ggplot(clean_weather, aes(x = date)) +
   facet_wrap(~city, scales = "free", ncol = 2) +
+  scale_y_continuous(limits = c(0, 90)) +
   geom_smooth(aes(y = min_temperature_f, color = "Min Temp")) +
   geom_smooth(aes(y = mean_temperature_f, color = "Mean Temp")) +
   geom_smooth(aes(y = max_temperature_f, color = "Max Temp")) +
@@ -208,6 +224,9 @@ ggplot(clean_weather, aes(x = date)) +
         plot.title = element_text(hjust = 0.5),
         panel.spacing = unit(1, "lines"),
         strip.background = element_blank())
+
+# calculate the average temperature in the bay area
+mean(clean_weather$mean_temperature_f)
 
 # CREATE A SUMMARY FIGURE FOR TRIPS DATA
 
@@ -236,6 +255,9 @@ ggplot(trips_with_city, aes(x = city, y = log(duration))) +
        y = "Duration (log(mins))") +
   theme_classic() +
   theme(plot.title = element_text(hjust = 0.5))
+
+# determine the mean trip duration
+mean(clean_trip$duration, na.rm = T)
 
 ########################
 ## Rush Hour Analysis ##
@@ -280,7 +302,8 @@ ggplot(weekday, aes(x = trip_mp)) +
        y = "Frequency") +
   geom_hline(yintercept = avg_weekday_freq, color = "red", linetype = "dashed") +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
 
 #' histogram indicates rush hour is from 7:30am-10:30am and 16:00 to 20:00, as
 #' these times have above average tip volume.
@@ -350,61 +373,36 @@ weekend %>%
 
 #' depending on the date in question, a different number of total bikes will have
 #' been available because additional bike stations were installed in the first
-#' few months of the year. GOAL: get the average number of bikes available for
-#' use in each month.
+#' few months of the year. Also, some bikes may be broken or undergoing repair.
 
-# first, find the number of bikes available for use on each day of the year
+# determine the number of bikes available in each month
+available_bikes <- clean_trip %>%
+  mutate(trip_month = month(trip_mp)) %>%
+  group_by(trip_month) %>%
+  summarise(n_bikes_available = length(unique(bike_id)))
 
-# create a vector containing the date of every day in the year 2014
-dates <- seq(from = as.POSIXct("2014-01-01", tz = "UTC"), to = as.POSIXct("2014-12-31", tz = "UTC"), by = "day")
-
-#' create an empty vector which will be used to store how many bikes were available
-#' for each day
-available_bikes_daily <- c()
-
-# cycle through each day of the year
-for(i in 1:365) {
-  
-  # identify the stations that were installed prior to the date in question
-  available_stations <- clean_station[dates[i] >= clean_station$installation_date,]
-  
-  # get the total number of bikes that were available on that day
-  available_bikes_daily[i] <- sum(available_stations$dock_count)
-}
-
-#' combine the dates with the daily bike availability into a data frame
-#' so that data can be grouped easily in the next step
-available_bikes <- data.frame(dates, available_bikes_daily)
-
-#' determine the average number of bikes available for each month
-#' (sum of daily availability divided by number of days in the month)
-available_bikes <- available_bikes %>% 
-  group_by(month(dates)) %>% 
-  summarise(avg_availability = sum(available_bikes_daily)/n())
-
-# rename the columns of the data frame for clarity
-colnames(available_bikes) <- c("month", "avg_availability")
-
-#' we now have the information needed to accurately calculate utilization.
-#' Rather than calculate as (total time used/total time in month),
-#' the utilization will be calculated as:
-#' total time used / (total time in month * number of bikes available that month).
-#' This approach provides more insight into the utilization because several bikes
-#' can be used at the same time.
+# calculate the percent utilization for each month
 monthly_util <- clean_trip %>%
   mutate(trip_month = month(trip_mp)) %>%
   group_by(trip_month) %>% 
-  summarise(utilization = (100*sum(duration)) / (60*24*days_in_month(trip_month[1])*available_bikes$avg_availability[trip_month[1]]))
+  summarise(utilization = (100*sum(duration)) / (60*24*days_in_month(trip_month[1])*available_bikes$n_bikes_available[trip_month[1]]))
 
 # plot the % utilization for each month of the year
 ggplot(monthly_util, aes(x = factor(trip_month), y = utilization)) +
   geom_line(group = 1, color = "blue") +
   geom_point(color = "black") +
+  scale_y_continuous(limits = c(0, 2)) +
+  geom_label(aes(label = round(utilization, 2)),
+             fill = "transparent", vjust = -1.5, size = 2.5, label.size = 0) +
   scale_x_discrete(labels = month.abb) +
   labs(title = "Monthly Bike Utilization",
        x = "Month",
        y = "Utilization (% per bike)") +
-  theme_classic()
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# determine the average year-round utilization
+mean(monthly_util$utilization)
 
 ######################
 ## Weather Analysis ##
@@ -428,7 +426,7 @@ weather_and_trips <- clean_trip %>%
 for(x in unique(weather_and_trips$city)){
   
   # only include one city per plot, also remove zip code since it is numeric but
-  # not relevant for the analysis
+  # not relevant for the analysis. (tmp = temporary data frame)
   tmp <- weather_and_trips %>%
     select(-zip_code) %>% 
     filter(city == x)
@@ -443,7 +441,8 @@ for(x in unique(weather_and_trips$city)){
   cor_matrix <- cor_matrix[c("n_trips", "avg_duration"), !colnames(cor_matrix) %in% c("n_trips", "avg_duration")]
   
   # create the correlation plot
-  plot <- corrplot(cor_matrix, method = "circle",
-           title = paste("Correlations Between Trips and Weather", " - ", x),
-           mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black")
+  corrplot(cor_matrix, method = "circle",
+           title = x,
+           mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black",
+           cex.main = 1.2, tl.srt = 45)
 }
