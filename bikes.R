@@ -38,6 +38,8 @@ freq(station)
 # repeat similar steps for the trip data frame
 head(trip)
 summary(trip)
+# SK (Points taken) The output of the code below shows 70 unique start/end station IDs, and 
+# 74 unique start/end station names. This is a discrepancy worth looking into.
 status(trip)
 freq(trip)
 
@@ -83,6 +85,9 @@ any(duplicated(clean_trip))
 clean_trip$duration <- clean_trip$duration / 60
 
 #remove outliers (any trip over 12 hours is considered unrealistic)
+# SK Can you provide evidence for 'unrealistic' ^? When identifying outliers
+# try to use either subject matter expert opinion, or statistical approaches.
+# Gut feelings are not always helpful.
 
 # keep the id of these long trips to document the outliers that were removed
 long_outliers <- clean_trip$id[clean_trip$duration > 12*60]
@@ -102,6 +107,9 @@ clean_trip <- clean_trip %>%
   filter(!(start_station_id == end_station_id & duration < 3))
 
 # GOAL: store removed trips in a data frame
+# SK A good exercise of building a dataframe from vectors, but not 
+# very meaningful. The two columns are not measurements and have no
+# relationship.
 
 length(cancelled_trips)
 length(long_outliers)
@@ -173,6 +181,7 @@ ggmap(sf_bay_area_map) +
         axis.text = element_blank(), 
         axis.ticks = element_blank(), 
         axis.title = element_blank())
+# SK Cool!
 
 # station figure - 2: show number of stations by city
 ggplot(clean_station, aes(x = city)) +
@@ -268,6 +277,8 @@ mean(clean_trip$duration, na.rm = T)
 clean_trip$trip_mp <- as.POSIXct((as.numeric(clean_trip$end_date) + as.numeric(clean_trip$start_date)) / 2,
                                  tz = "UTC")
 
+# SK Great idea to make this a function. Style recommendation: keep functions at the
+# top of your script, or in a different R file if there are many of them.
 # create function to easily identify weekdays/weekends
 is_weekday <- function(date) {
   day_of_week <- weekdays(date)
@@ -311,6 +322,8 @@ ggplot(weekday, aes(x = trip_mp)) +
 ############################
 ## Busy Stations Analysis ##
 ############################
+
+# SK You could have also used trip midpoints you created for identifying the rush hours.
 
 #' create new column "start_time" with the same date for all rows. Need to do this
 #' because POSIX format always has an associated date, but we do not want to compare
@@ -446,3 +459,15 @@ for(x in unique(weather_and_trips$city)){
            mar = c(0,0,1,0), cl.pos = "b", cl.ratio = 4, tl.col = "black",
            cex.main = 1.2, tl.srt = 45)
 }
+
+# SK Where is the benefit in plotting correlations city by city? 
+# Is there a good reason to believe that residents of one city will
+# react differently to the weather than the others?
+# Even if you suspect that is the case, the aggregate level is a better
+# starting place to explore possible correlations. You may prefer to
+# dig deeper into city level later.
+# (Points taken) In your report you state "Higher temperatures and visibility are associated
+# with an increased number of bike trips, while precipitation and cloud cover are associated 
+# with a decreased number of bike trips.". You need to retain your 
+# correlation matrices to provide numbers (ie correlation coefficient) 
+# to support your claim.
